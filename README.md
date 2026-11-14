@@ -1,6 +1,6 @@
-# herm-windows
+# Hermate for Windows
 
-An unofficial **Windows companion for [Hermes Agent](https://hermes-agent.nousresearch.com)**, built with **Tauri** (Rust + TypeScript).
+An unofficial **Hermate for Windows**, a companion for [Hermes Agent](https://hermes-agent.nousresearch.com)**, built with **Tauri** (Rust + TypeScript).
 
 Inspired by [chryzxc/herm](https://github.com/chryzxc/herm), a native macOS (Swift/SwiftUI) app. This is a clean re-implementation for Windows, not a line-by-line port: the Swift UI code can't be reused, so only the *design* and the *Hermes protocol contract* carry over.
 

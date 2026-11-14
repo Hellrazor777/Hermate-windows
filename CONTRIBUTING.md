@@ -1,4 +1,4 @@
-# Contributing
+# Contributing to Hermate for Windows
 
 ## Setup
 1. Install [Rust](https://rustup.rs), Node 20+, and the Tauri prerequisites for Windows (WebView2, MSVC build tools).

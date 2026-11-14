@@ -1,4 +1,4 @@
-# Roadmap
+# Hermate for Windows: Roadmap
 
 Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.submit`, `session.interrupt`, `approval.respond`, `clarify.respond`, streamed events, `profiles.*`, `projects.tree`, `cron.manage`, `voice.*`) plus CLI calls through `shell.exec` (`hermes kanban|cron|mcp|update`). Windows data lives in `%LOCALAPPDATA%\hermes`.
 

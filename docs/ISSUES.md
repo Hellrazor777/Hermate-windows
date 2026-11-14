@@ -1,4 +1,4 @@
-# Starter issues to open
+# Starter issues to open (Hermate for Windows)
 1. Scaffold Tauri app + Windows CI
 2. Hermes RPC client (TypeScript): connect, auth, reconnect, typed events
 3. Verify protocol against a live Hermes install; document differences from ARCHITECTURE.md
