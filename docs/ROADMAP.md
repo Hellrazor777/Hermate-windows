@@ -3,8 +3,8 @@
 Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.submit`, `session.interrupt`, `approval.respond`, `clarify.respond`, streamed events, `profiles.*`, `projects.tree`, `cron.manage`, `voice.*`) plus CLI calls through `shell.exec` (`hermes kanban|cron|mcp|update`). Windows data lives in `%LOCALAPPDATA%\hermes`.
 
 ## Phase 1 (MVP)
-- [ ] Tauri + TypeScript scaffold, CI on Windows
-- [ ] Hermes RPC client (auth, reconnect, typed events), tested against a real install
+- [x] Tauri + TypeScript scaffold, CI on Windows
+- [ ] Hermes RPC client (auth, reconnect, typed events), tested against a real install (client + unit tests done in `src/rpc`; live verification pending, issue #3)
 - [ ] Connection setup: local, remote, SSH-forwarded
 - [ ] Streaming chat with markdown
 - [ ] Approval / clarify requests

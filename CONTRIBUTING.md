@@ -3,7 +3,7 @@
 ## Setup
 1. Install [Rust](https://rustup.rs), Node 20+, and the Tauri prerequisites for Windows (WebView2, MSVC build tools).
 2. Install Hermes Agent natively on Windows and run it.
-3. `npm install && npm run tauri dev` (once the scaffold lands).
+3. `npm install && npm run tauri dev` .
 
 ## Ground rules
 - Hermes is authoritative for sessions, agents, models, skills, cron. The app stores preferences only. Never keep a second copy of Hermes data.
