@@ -13,6 +13,7 @@ A frontend only. Hermes keeps sessions, agents and history. This app connects to
 - an always-available edge/tray widget: idle, working, needs-you, finished, offline
 - streaming chat with markdown, tool activity and approval requests
 - later: sessions, files, terminal, quota, Kanban, cron automations, GitHub tools
+- the 3D Office Preview: a low-poly office where each bot is a character moving between desks, meeting rooms and the garden based on task status (Three.js)
 
 ## Requirements
 

@@ -9,3 +9,6 @@
 8. Connection setup screen: local / remote / SSH
 9. Settings store and theming
 10. Terminal pane via xterm.js (phase 2)
+11. Office: Three.js scene scaffold and procedural low-poly office builder (phase 3)
+12. Office: bot characters, task-status destinations and navmesh pathfinding (phase 3)
+13. Office: lighting, daylight cycle, post-processing and performance budget (phase 3)
