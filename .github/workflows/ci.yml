@@ -24,3 +24,5 @@ jobs:
       - run: npm run build
       - run: cargo test
         working-directory: src-tauri
+        env:
+          HERMATE_REQUIRE_CREDMAN: "1"
