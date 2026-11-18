@@ -45,11 +45,26 @@ function setup(opts: { token?: string } = {}) {
   return { client, sockets };
 }
 
+/** Open a socket and complete the client.capabilities handshake (request id 1). */
+async function handshake(socket: FakeSocket, client: HermesClient, result: unknown = { server_requests: ["approval", "clarify"] }) {
+  socket.open();
+  expect(socket.sent[socket.sent.length - 1]).toMatchObject({ method: "client.capabilities", params: { server_requests: true } });
+  const id = socket.sent[socket.sent.length - 1].id;
+  socket.receive(
+    result && typeof result === "object" && "error" in result
+      ? { id, error: (result as { error: unknown }).error }
+      : { id, result },
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  void client;
+}
+
 async function connected() {
   const ctx = setup();
   const p = ctx.client.connect();
-  ctx.sockets[0].open();
+  await handshake(ctx.sockets[0], ctx.client);
   await p;
+  ctx.sockets[0].sent.length = 0; // drop the handshake frame; later ids continue from 2
   return ctx;
 }
 
@@ -73,10 +88,10 @@ describe("HermesClient requests", () => {
     const { client, sockets } = await connected();
     const a = client.request("session.create", { cwd: "C:\\x" });
     const b = client.request("profiles.list");
-    expect(sockets[0].sent.map((m) => m.id)).toEqual([1, 2]);
+    expect(sockets[0].sent.map((m) => m.id)).toEqual([2, 3]);
     expect(sockets[0].sent[0]).toMatchObject({ jsonrpc: "2.0", method: "session.create", params: { cwd: "C:\\x" } });
-    sockets[0].receive({ jsonrpc: "2.0", id: 2, result: { profiles: [] } });
-    sockets[0].receive({ jsonrpc: "2.0", id: 1, result: { session_id: "s1" } });
+    sockets[0].receive({ jsonrpc: "2.0", id: 3, result: { profiles: [] } });
+    sockets[0].receive({ jsonrpc: "2.0", id: 2, result: { session_id: "s1" } });
     await expect(a).resolves.toEqual({ session_id: "s1" });
     await expect(b).resolves.toEqual({ profiles: [] });
   });
@@ -84,7 +99,7 @@ describe("HermesClient requests", () => {
   it("rejects with HermesRpcError on an error response", async () => {
     const { client, sockets } = await connected();
     const p = client.request("prompt.submit");
-    sockets[0].receive({ id: 1, error: { code: -32000, message: "nope" } });
+    sockets[0].receive({ id: 2, error: { code: -32000, message: "nope" } });
     await expect(p).rejects.toMatchObject({ name: "HermesRpcError", message: "nope", code: -32000 });
   });
 
@@ -109,8 +124,10 @@ describe("HermesClient requests", () => {
     const p = client.request("ping");
     expect(sockets).toHaveLength(1);
     sockets[0].open();
+    sockets[0].receive({ id: 1, result: {} }); // client.capabilities
     await vi.advanceTimersByTimeAsync(0);
-    sockets[0].receive({ id: 1, result: {} });
+    expect(sockets[0].sent[1]).toMatchObject({ id: 2, method: "ping" });
+    sockets[0].receive({ id: 2, result: {} });
     await expect(p).resolves.toEqual({});
   });
 
@@ -139,7 +156,7 @@ describe("HermesClient reconnect", () => {
     sockets[3].drop();
     await vi.advanceTimersByTimeAsync(400); // capped at 400
     expect(sockets).toHaveLength(5);
-    sockets[4].open();
+    await handshake(sockets[4], client);
     expect(client.connectionStatus).toBe("connected");
     sockets[4].drop();
     await vi.advanceTimersByTimeAsync(100); // reset to initial delay
@@ -201,6 +218,56 @@ describe("events and server requests", () => {
   });
 });
 
+describe("handshake, heartbeat and answers", () => {
+  it("is not connected until client.capabilities is answered", async () => {
+    const { client, sockets } = setup();
+    const p = client.connect();
+    sockets[0].open();
+    expect(client.connectionStatus).toBe("connecting");
+    sockets[0].receive({ id: 1, result: { server_requests: [] } });
+    await p;
+    expect(client.connectionStatus).toBe("connected");
+    expect(client.serverRequestsEnabled).toBe(true);
+  });
+
+  it("connects but fails closed against a backend that rejects client.capabilities", async () => {
+    const { client, sockets } = setup();
+    const p = client.connect();
+    await handshake(sockets[0], client, { error: { code: -32601, message: "unknown method" } });
+    await p;
+    expect(client.connectionStatus).toBe("connected");
+    expect(client.serverRequestsEnabled).toBe(false);
+  });
+
+  it("pings on an interval and reconnects when a ping goes unanswered", async () => {
+    const { client, sockets } = await connected();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(sockets[0].sent[0]).toMatchObject({ method: "gateway.ping" });
+    sockets[0].receive({ id: sockets[0].sent[0].id, result: { ok: true } });
+    await vi.advanceTimersByTimeAsync(20_000); // second ping, never answered
+    await vi.advanceTimersByTimeAsync(10_001);
+    expect(client.connectionStatus).toBe("reconnecting");
+    expect(sockets[0].closed).toBe(true);
+  });
+
+  it("answers approvals and clarifications with response frames carrying the server request id", async () => {
+    const { client, sockets } = await connected();
+    client.answerApproval("srq-1", "once");
+    client.answerApproval("srq-2", "always", true);
+    client.answerClarify("srq-3", { q0: "a", q1: null });
+    expect(sockets[0].sent).toEqual([
+      { jsonrpc: "2.0", id: "srq-1", result: { choice: "once" } },
+      { jsonrpc: "2.0", id: "srq-2", result: { choice: "always", all: true } },
+      { jsonrpc: "2.0", id: "srq-3", result: { answers: { q0: "a", q1: null } } },
+    ]);
+  });
+
+  it("refuses to answer while disconnected", () => {
+    const { client } = setup();
+    expect(() => client.answerApproval("srq-1", "deny")).toThrow(HermesDisconnectedError);
+  });
+});
+
 describe("session isolation", () => {
   const ev = (type: string, extra: Partial<HermesEvent> = {}): HermesEvent => ({ type, ...extra });
 
@@ -211,6 +278,7 @@ describe("session isolation", () => {
     router.route(ev("a", { session_id: "s1" }));
     router.route(ev("b", { session_id: "s2" }));
     router.route(ev("c")); // no id: fail closed
+    router.route(ev("c2", { session_id: "" })); // Hermes sends "" on sessions.changed: also dropped
     router.route(ev("d", { payload: { session_id: "s1" } })); // nested id counts
     router.route(ev("e", { payload: { session_id: "s2" } }));
     expect(mine).toEqual(["a", "d"]);
