@@ -10,7 +10,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 - [ ] Approval / clarify requests
 - [ ] Tray icon + edge widget with activity states
 - [x] Credential storage via Windows Credential Manager (write path unverified on the dev machine: error 8; CI enforces it)
-- [ ] Settings and preferences store
+- [x] Settings and preferences store
 
 ## Phase 2
 Sessions and history, file browser, terminal (xterm.js), quota dashboards, Kanban, cron automations, notifications.
