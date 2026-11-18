@@ -10,6 +10,8 @@ import {
 } from "./types";
 
 /** The subset of the browser WebSocket the client uses; lets tests inject a fake. */
+export type ApprovalChoice = "once" | "session" | "always" | "deny";
+
 export interface WebSocketLike {
   onopen: ((ev: unknown) => void) | null;
   onmessage: ((ev: { data: unknown }) => void) | null;
@@ -27,6 +29,8 @@ export interface HermesClientOptions {
   /** Default per-request timeout. */
   requestTimeoutMs?: number;
   reconnect?: { initialDelayMs?: number; maxDelayMs?: number };
+  /** `gateway.ping` keepalive. Hermes' own clients use a 45s deadline; a missed pong drops the socket and reconnects. */
+  heartbeat?: { intervalMs?: number; timeoutMs?: number };
   /** Test seam. */
   webSocketFactory?: (url: string) => WebSocketLike;
 }
@@ -68,6 +72,8 @@ export class HermesClient {
   private pending = new Map<number, Pending>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private attempt = 0;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private serverRequestsAdvertised = false;
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
   private connectWaiters: { resolve: () => void; reject: (e: unknown) => void }[] = [];
 
@@ -107,7 +113,47 @@ export class HermesClient {
     if (this.status === "idle" || this.status === "closed") await this.connect();
     const socket = this.socket;
     if (!socket || this.status !== "connected") throw new HermesDisconnectedError();
+    return this.send(socket, method, params, timeoutMs);
+  }
 
+  /**
+   * Answer a server->client request by replying with a JSON-RPC response frame carrying the
+   * same `srq-…` id. This is how Hermes expects approval and clarify answers (verified in the
+   * server source; see docs/PROTOCOL.md). A reply for a request that already ended is dropped by the server.
+   */
+  respondToServerRequest(id: string, result: JsonObject): void {
+    if (!this.socket || this.status !== "connected") throw new HermesDisconnectedError();
+    this.socket.send(JSON.stringify({ jsonrpc: "2.0", id, result }));
+  }
+
+  /** Answer an `approval.request` event (use its `payload.server_request_id`). */
+  answerApproval(serverRequestId: string, choice: ApprovalChoice, all = false): void {
+    this.respondToServerRequest(serverRequestId, all ? { choice, all: true } : { choice });
+  }
+
+  /** Answer a `clarify.request` event (use its `payload.request_id`). `null` skips a question. Result shape not yet verified live. */
+  answerClarify(requestId: string, answers: Record<string, string | string[] | null>): void {
+    this.respondToServerRequest(requestId, { answers });
+  }
+
+  /** Close for good: no reconnect, pending requests fail. */
+  close(): void {
+    this.clearReconnect();
+    this.stopHeartbeat();
+    const socket = this.socket;
+    this.socket = null;
+    if (socket) {
+      detach(socket);
+      socket.close(NORMAL_CLOSURE);
+    }
+    this.failPending(new HermesDisconnectedError());
+    this.rejectWaiters(new HermesDisconnectedError());
+    this.setStatus("closed");
+  }
+
+  // --- internals ---
+
+  private send(socket: WebSocketLike, method: string, params: JsonObject, timeoutMs?: number): Promise<JsonObject> {
     const id = ++this.nextId;
     return new Promise<JsonObject>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -125,30 +171,64 @@ export class HermesClient {
     });
   }
 
-  /** Answer an `approval.request`. Param names are a spec to confirm (issue #3). */
-  approvalRespond(sessionId: string, params: JsonObject): Promise<JsonObject> {
-    return this.request("approval.respond", { session_id: sessionId, ...params });
+  /** Tell Hermes this connection answers server requests; otherwise it never sends them and the agent waits out its deadline. */
+  private handshake(socket: WebSocketLike): void {
+    const markConnected = (serverRequests: boolean) => {
+      if (this.socket !== socket) return;
+      this.serverRequestsAdvertised = serverRequests;
+      this.attempt = 0;
+      this.setStatus("connected");
+      this.startHeartbeat(socket);
+      const waiters = this.connectWaiters;
+      this.connectWaiters = [];
+      waiters.forEach((w) => w.resolve());
+    };
+    this.send(socket, "client.capabilities", { server_requests: true }).then(
+      () => markConnected(true),
+      (e) => {
+        // A backend that rejects the method is older: connect anyway, but fail closed on server requests.
+        if (e instanceof HermesRpcError && !(e instanceof HermesDisconnectedError) && !(e instanceof HermesTimeoutError)) {
+          markConnected(false);
+        } else {
+          this.handleDrop(socket);
+        }
+      },
+    );
   }
 
-  clarifyRespond(sessionId: string, params: JsonObject): Promise<JsonObject> {
-    return this.request("clarify.respond", { session_id: sessionId, ...params });
+  /** True when Hermes accepted `client.capabilities {server_requests:true}` on the current connection. */
+  get serverRequestsEnabled(): boolean {
+    return this.status === "connected" && this.serverRequestsAdvertised;
   }
 
-  /** Close for good: no reconnect, pending requests fail. */
-  close(): void {
-    this.clearReconnect();
-    const socket = this.socket;
+  private startHeartbeat(socket: WebSocketLike): void {
+    this.stopHeartbeat();
+    const { intervalMs = 20_000, timeoutMs = 10_000 } = this.opts.heartbeat ?? {};
+    this.heartbeatTimer = setInterval(() => {
+      this.send(socket, "gateway.ping", {}, timeoutMs).catch(() => this.handleDrop(socket));
+    }, intervalMs);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
+  }
+
+  /** The socket is gone or unresponsive: tear it down once and schedule a reconnect. */
+  private handleDrop(socket: WebSocketLike): void {
+    if (this.socket !== socket) return; // a replaced/closed socket's drop is not a drop
     this.socket = null;
-    if (socket) {
-      detach(socket);
-      socket.close(NORMAL_CLOSURE);
+    this.stopHeartbeat();
+    detach(socket);
+    try {
+      socket.close();
+    } catch {
+      /* already closed */
     }
     this.failPending(new HermesDisconnectedError());
     this.rejectWaiters(new HermesDisconnectedError());
-    this.setStatus("closed");
+    this.scheduleReconnect();
   }
-
-  // --- internals ---
 
   private open(): void {
     let socket: WebSocketLike;
@@ -165,12 +245,7 @@ export class HermesClient {
     }
     this.socket = socket;
     socket.onopen = () => {
-      if (this.socket !== socket) return;
-      this.attempt = 0;
-      this.setStatus("connected");
-      const waiters = this.connectWaiters;
-      this.connectWaiters = [];
-      waiters.forEach((w) => w.resolve());
+      if (this.socket === socket) this.handshake(socket);
     };
     socket.onmessage = (ev) => {
       if (this.socket === socket && typeof ev.data === "string") this.handleFrame(ev.data);
@@ -178,13 +253,7 @@ export class HermesClient {
     socket.onerror = () => {
       /* a close always follows; handled there */
     };
-    socket.onclose = () => {
-      if (this.socket !== socket) return; // a replaced/closed socket's close is not a drop
-      this.socket = null;
-      this.failPending(new HermesDisconnectedError());
-      this.rejectWaiters(new HermesDisconnectedError());
-      this.scheduleReconnect();
-    };
+    socket.onclose = () => this.handleDrop(socket);
   }
 
   private handleFrame(text: string): void {
