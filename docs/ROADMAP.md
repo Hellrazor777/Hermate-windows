@@ -5,7 +5,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 ## Phase 1 (MVP)
 - [x] Tauri + TypeScript scaffold, CI on Windows
 - [x] Hermes RPC client (auth, reconnect, typed events), tested against a real install (see `docs/PROTOCOL.md`; approval/clarify round trip still unverified)
-- [ ] Connection setup: local, remote, SSH-forwarded
+- [ ] Connection setup: local and remote done; SSH-forwarded pending (not yet verified against Hermes)
 - [ ] Streaming chat with markdown
 - [ ] Approval / clarify requests
 - [ ] Tray icon + edge widget with activity states

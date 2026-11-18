@@ -1,3 +1,4 @@
+import ConnectionScreen from "./connection/ConnectionScreen";
 import { THEME_PREFERENCES, settingsStore, useSettings, type ThemePreference } from "./settings";
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: "Match system", light: "Light", dark: "Dark" };
@@ -8,6 +9,8 @@ export default function App() {
     <main>
       <h1>Hermate</h1>
       <p className="muted">Unofficial Windows companion for Hermes Agent. Not connected.</p>
+
+      <ConnectionScreen />
 
       <fieldset>
         <legend>Appearance</legend>

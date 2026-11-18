@@ -19,6 +19,8 @@ describe("normalizeSettings", () => {
       theme: "dark",
       notifications: true,
       edgeWidget: false,
+      connections: [],
+      activeConnectionId: null,
     });
     expect(normalizeSettings({ theme: "neon" }).theme).toBe("system");
   });

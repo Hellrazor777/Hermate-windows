@@ -3,6 +3,8 @@
  * here. Secrets never belong in settings (they live in Windows Credential Manager); a
  * connection refers to its token by `credentialId`.
  */
+import { normalizeProfile, type ConnectionProfile } from "../connection/profile";
+
 export const SETTINGS_VERSION = 1;
 
 export type ThemePreference = "system" | "light" | "dark";
@@ -15,6 +17,10 @@ export interface Settings {
   notifications: boolean;
   /** Show the edge widget with activity states. */
   edgeWidget: boolean;
+  /** Where to connect. Holds no secrets; remote profiles reference a Credential Manager id. */
+  connections: ConnectionProfile[];
+  /** Profile to connect to at launch; null means ask. */
+  activeConnectionId: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   notifications: true,
   edgeWidget: true,
+  connections: [],
+  activeConnectionId: null,
 };
 
 /** Keys that look like secrets are never persisted, whatever a caller passes. */
@@ -41,10 +49,31 @@ export function containsSecretKey(value: unknown): boolean {
  */
 export function normalizeSettings(raw: unknown): Settings {
   const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const connections = normalizeConnections(o.connections);
   return {
     version: SETTINGS_VERSION,
     theme: THEME_PREFERENCES.includes(o.theme as ThemePreference) ? (o.theme as ThemePreference) : DEFAULT_SETTINGS.theme,
     notifications: typeof o.notifications === "boolean" ? o.notifications : DEFAULT_SETTINGS.notifications,
     edgeWidget: typeof o.edgeWidget === "boolean" ? o.edgeWidget : DEFAULT_SETTINGS.edgeWidget,
+    connections,
+    activeConnectionId:
+      typeof o.activeConnectionId === "string" && connections.some((c) => c.id === o.activeConnectionId)
+        ? o.activeConnectionId
+        : null,
   };
+}
+
+/** Keep valid profiles, drop invalid ones and duplicate ids. */
+function normalizeConnections(raw: unknown): ConnectionProfile[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: ConnectionProfile[] = [];
+  for (const item of raw) {
+    const profile = normalizeProfile(item);
+    if (profile && !seen.has(profile.id)) {
+      seen.add(profile.id);
+      out.push(profile);
+    }
+  }
+  return out;
 }
