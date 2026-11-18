@@ -9,7 +9,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 - [ ] Streaming chat with markdown
 - [ ] Approval / clarify requests
 - [ ] Tray icon + edge widget with activity states
-- [ ] Credential storage via Windows Credential Manager
+- [x] Credential storage via Windows Credential Manager (write path unverified on the dev machine: error 8; CI enforces it)
 - [ ] Settings and preferences store
 
 ## Phase 2
