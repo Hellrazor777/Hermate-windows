@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChatController } from "./chat/controller";
 import { CronStore } from "./cron/store";
+import { FilesStore } from "./files/store";
 import { KanbanStore } from "./kanban/store";
 import { RequestInbox } from "./requests/inbox";
 import type { HermesClient } from "./rpc";
@@ -11,6 +12,7 @@ export interface Services {
   chat: ChatController;
   inbox: RequestInbox;
   cron: CronStore;
+  files: FilesStore;
   kanban: KanbanStore;
   sessions: SessionList;
 }
@@ -27,12 +29,13 @@ export function useServices(client: HermesClient | null): Services | null {
       setServices(null);
       return;
     }
-    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), cron: new CronStore(client), kanban: new KanbanStore(client), sessions: new SessionList(client) };
+    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), cron: new CronStore(client), files: new FilesStore(client), kanban: new KanbanStore(client), sessions: new SessionList(client) };
     setServices(s);
     return () => {
       void s.chat.close();
       s.inbox.dispose();
       s.cron.dispose();
+      s.files.dispose();
       s.kanban.dispose();
       s.sessions.dispose();
     };

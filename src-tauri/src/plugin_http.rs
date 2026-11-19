@@ -10,7 +10,7 @@ use serde::Serialize;
 
 const TIMEOUT: Duration = Duration::from_secs(20);
 const MAX_BODY: usize = 8 * 1024 * 1024;
-const ALLOWED_PREFIX: &str = "/api/plugins/kanban/";
+const KANBAN_PREFIX: &str = "/api/plugins/kanban/";
 
 #[derive(Debug, PartialEq, Serialize)]
 pub struct PluginResponse {
@@ -18,8 +18,21 @@ pub struct PluginResponse {
     pub body: String,
 }
 
-/// Build the request URL, or say why the call is not allowed. This is a Hermes Kanban client, not a general proxy.
-pub fn build_url(base: &str, path: &str) -> Result<tauri::Url, String> {
+/// Which Hermes HTTP calls Hermate makes: the Kanban plugin API, and read-only file listing and reading.
+/// Upload, delete and mkdir on `/api/files` are deliberately not reachable.
+fn allowed(method: &str, path: &str) -> bool {
+    let route = path.split_once('?').map_or(path, |(p, _)| p);
+    if route.contains("..") || route.contains('\\') || route.contains("//") {
+        return false;
+    }
+    if route.starts_with(KANBAN_PREFIX) {
+        return true;
+    }
+    method == "GET" && (route == "/api/files" || route == "/api/files/read")
+}
+
+/// Build the request URL, or say why the call is not allowed. This is a Hermes client for a few routes, not a general proxy.
+pub fn build_url(base: &str, method: &str, path: &str) -> Result<tauri::Url, String> {
     let base = tauri::Url::parse(base).map_err(|_| "invalid Hermes URL".to_string())?;
     if base.scheme() != "http" && base.scheme() != "https" {
         return Err("only http:// and https:// Hermes URLs are allowed".into());
@@ -27,8 +40,8 @@ pub fn build_url(base: &str, path: &str) -> Result<tauri::Url, String> {
     if base.host_str().is_none() || !base.username().is_empty() || base.password().is_some() {
         return Err("invalid Hermes URL".into());
     }
-    if !path.starts_with(ALLOWED_PREFIX) || path.contains("..") || path.contains('#') || path.contains('\\') || path.contains("//") {
-        return Err("only the Hermes Kanban API is allowed".into());
+    if path.contains('#') || !allowed(method, path) {
+        return Err("that Hermes API call is not allowed".into());
     }
     let prefix = base.path().trim_end_matches('/').to_string();
     let mut url = base.clone();
@@ -46,6 +59,7 @@ pub async fn request(base: &str, token: &str, method: &str, path: &str, body: Op
     if token.is_empty() || token.contains(['\r', '\n']) {
         return Err("missing session token".into());
     }
+    let method_name = method;
     let method = match method {
         "GET" => reqwest::Method::GET,
         "POST" => reqwest::Method::POST,
@@ -53,7 +67,7 @@ pub async fn request(base: &str, token: &str, method: &str, path: &str, body: Op
         "DELETE" => reqwest::Method::DELETE,
         _ => return Err("method not allowed".into()),
     };
-    let url = build_url(base, path)?;
+    let url = build_url(base, method_name, path)?;
     let client = reqwest::Client::builder()
         .timeout(TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
@@ -94,16 +108,31 @@ mod tests {
 
     #[test]
     fn builds_urls_only_for_the_kanban_api() {
-        let u = build_url("http://127.0.0.1:9119", "/api/plugins/kanban/board?board=a").unwrap();
+        let u = build_url("http://127.0.0.1:9119", "GET", "/api/plugins/kanban/board?board=a").unwrap();
         assert_eq!(u.as_str(), "http://127.0.0.1:9119/api/plugins/kanban/board?board=a");
-        let u = build_url("https://host/hermes/", "/api/plugins/kanban/boards").unwrap();
+        let u = build_url("https://host/hermes/", "GET", "/api/plugins/kanban/boards").unwrap();
         assert_eq!(u.as_str(), "https://host/hermes/api/plugins/kanban/boards");
         for bad in ["/api/ws", "/api/plugins/other/x", "/api/plugins/kanban/../../x", "//evil/api/plugins/kanban/x", "/api/plugins/kanban/x#f"] {
-            assert!(build_url("http://127.0.0.1:9119", bad).is_err(), "{bad}");
+            assert!(build_url("http://127.0.0.1:9119", "GET", bad).is_err(), "{bad}");
         }
-        assert!(build_url("ftp://h", "/api/plugins/kanban/x").is_err());
-        assert!(build_url("http://user:pw@h", "/api/plugins/kanban/x").is_err());
-        assert!(build_url("nonsense", "/api/plugins/kanban/x").is_err());
+        // Files are read-only, and only listing and reading are reachable.
+        let u = build_url("http://h:1", "GET", "/api/files?path=C%3A%5CUsers%5Ca..b").unwrap();
+        assert_eq!(u.as_str(), "http://h:1/api/files?path=C%3A%5CUsers%5Ca..b");
+        assert!(build_url("http://h:1", "GET", "/api/files/read?path=x").is_ok());
+        for (m, p) in [
+            ("DELETE", "/api/files"),
+            ("POST", "/api/files"),
+            ("POST", "/api/files/upload"),
+            ("POST", "/api/files/mkdir"),
+            ("GET", "/api/files/download"),
+            ("GET", "/api/files/stream"),
+            ("GET", "/api/filesx"),
+        ] {
+            assert!(build_url("http://h:1", m, p).is_err(), "{m} {p}");
+        }
+        assert!(build_url("ftp://h", "GET", "/api/plugins/kanban/x").is_err());
+        assert!(build_url("http://user:pw@h", "GET", "/api/plugins/kanban/x").is_err());
+        assert!(build_url("nonsense", "GET", "/api/plugins/kanban/x").is_err());
     }
 
     async fn serve(reply: &'static str) -> (u16, tokio::sync::oneshot::Receiver<String>) {
