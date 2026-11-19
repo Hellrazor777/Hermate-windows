@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChatController } from "./chat/controller";
+import { CronStore } from "./cron/store";
 import { RequestInbox } from "./requests/inbox";
 import type { HermesClient } from "./rpc";
 import { SessionList } from "./sessions/list";
@@ -8,6 +9,7 @@ import { SessionList } from "./sessions/list";
 export interface Services {
   chat: ChatController;
   inbox: RequestInbox;
+  cron: CronStore;
   sessions: SessionList;
 }
 
@@ -23,11 +25,12 @@ export function useServices(client: HermesClient | null): Services | null {
       setServices(null);
       return;
     }
-    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), sessions: new SessionList(client) };
+    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), cron: new CronStore(client), sessions: new SessionList(client) };
     setServices(s);
     return () => {
       void s.chat.close();
       s.inbox.dispose();
+      s.cron.dispose();
       s.sessions.dispose();
     };
   }, [client]);
