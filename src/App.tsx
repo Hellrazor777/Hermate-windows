@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
+import CronPanel from "./cron/CronPanel";
 import ActivityBridge from "./activity/ActivityBridge";
 import { useActivity } from "./activity/useActivity";
 import RequestsPanel from "./requests/RequestsPanel";
@@ -27,6 +28,7 @@ export default function App() {
       {services && <RequestsPanel inbox={services.inbox} />}
       <ConnectionScreen onConnected={setClient} />
       {services && <ChatView chat={services.chat} />}
+      {services && <CronPanel store={services.cron} />}
 
       <TerminalPane />
 
