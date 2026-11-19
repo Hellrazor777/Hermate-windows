@@ -36,6 +36,14 @@ export class SettingsStore {
     this.listeners.forEach((l) => l());
   }
 
+  /** Re-read storage (another window changed it) and notify if anything differs. */
+  reloadFromStorage(): void {
+    const next = this.read();
+    if (JSON.stringify(next) === JSON.stringify(this.current)) return;
+    this.current = next;
+    this.listeners.forEach((l) => l());
+  }
+
   reset(): void {
     this.current = { ...DEFAULT_SETTINGS };
     this.write();

@@ -1,17 +1,8 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { HermesClient } from "../rpc";
-import { ChatController } from "./controller";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { ChatController } from "./controller";
 import Markdown from "./Markdown";
 
-export default function ChatView({ client }: { client: HermesClient }) {
-  const chat = useMemo(() => new ChatController(client), [client]);
-  useEffect(
-    () => () => {
-      void chat.close();
-    },
-    [chat],
-  );
-
+export default function ChatView({ chat }: { chat: ChatController }) {
   const state = useSyncExternalStore(chat.subscribe, chat.get);
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);

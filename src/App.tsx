@@ -1,8 +1,11 @@
 import { useState } from "react";
 import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
+import ActivityBridge from "./activity/ActivityBridge";
+import { useActivity } from "./activity/useActivity";
 import RequestsPanel from "./requests/RequestsPanel";
 import type { HermesClient } from "./rpc";
+import { useServices } from "./services";
 import { THEME_PREFERENCES, settingsStore, useSettings, type ThemePreference } from "./settings";
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: "Match system", light: "Light", dark: "Dark" };
@@ -10,16 +13,19 @@ const THEME_LABELS: Record<ThemePreference, string> = { system: "Match system", 
 export default function App() {
   const [settings, update] = useSettings();
   const [client, setClient] = useState<HermesClient | null>(null);
+  const services = useServices(client);
+  const activity = useActivity(client, services);
   return (
     <main>
+      <ActivityBridge snapshot={activity} services={services} />
       <h1>Hermate</h1>
       <p className="muted">
         Unofficial Windows companion for Hermes Agent. {client ? "Connected." : "Not connected."}
       </p>
 
-      {client && <RequestsPanel client={client} />}
+      {services && <RequestsPanel inbox={services.inbox} />}
       <ConnectionScreen onConnected={setClient} />
-      {client && <ChatView client={client} />}
+      {services && <ChatView chat={services.chat} />}
 
       <fieldset>
         <legend>Appearance</legend>

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { HermesClient } from "../rpc";
-import { RequestInbox } from "./inbox";
+import { useState, useSyncExternalStore } from "react";
+import type { RequestInbox } from "./inbox";
 import type { ClarifyQuestion, PendingRequest } from "./state";
 
 const CHOICE_LABELS: Record<string, string> = {
@@ -11,9 +10,7 @@ const CHOICE_LABELS: Record<string, string> = {
 };
 
 /** Hermes is blocked until these are answered, so they sit above everything else. */
-export default function RequestsPanel({ client }: { client: HermesClient }) {
-  const inbox = useMemo(() => new RequestInbox(client), [client]);
-  useEffect(() => () => inbox.dispose(), [inbox]);
+export default function RequestsPanel({ inbox }: { inbox: RequestInbox }) {
   const { pending, error } = useSyncExternalStore(inbox.subscribe, inbox.get);
 
   if (pending.length === 0 && !error) return null;
