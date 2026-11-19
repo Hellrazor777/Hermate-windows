@@ -21,6 +21,16 @@ export interface WebSocketLike {
   close(code?: number, reason?: string): void;
 }
 
+export interface HttpRequest {
+  baseUrl: string;
+  token: string;
+  method: "GET" | "POST" | "PATCH" | "DELETE";
+  path: string;
+  body?: string;
+}
+
+export type HttpTransport = (req: HttpRequest) => Promise<{ status: number; body: string }>;
+
 export interface HermesClientOptions {
   /** Base URL of Hermes, e.g. `http://127.0.0.1:9119` (loopback / SSH-forwarded) or `https://host` (remote -> wss). */
   baseUrl: string;
@@ -33,6 +43,11 @@ export interface HermesClientOptions {
   heartbeat?: { intervalMs?: number; timeoutMs?: number };
   /** Test seam. */
   webSocketFactory?: (url: string) => WebSocketLike;
+  /**
+   * HTTP to Hermes' dashboard plugin API (Kanban). In the app this runs in Rust, because Hermes' Origin gate
+   * refuses a webview's own requests. Without one, plugin calls fail closed.
+   */
+  httpTransport?: HttpTransport;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -107,6 +122,36 @@ export class HermesClient {
         this.open();
       }
     });
+  }
+
+  /** A call to `/api/plugins/<name>/...`. Resolves with the parsed JSON; an HTTP error throws with Hermes' `detail`. */
+  async pluginRequest(method: HttpRequest["method"], path: string, body?: unknown): Promise<JsonObject> {
+    const transport = this.opts.httpTransport;
+    if (!transport) throw new HermesRpcError("This connection cannot reach Hermes' HTTP API.");
+    let res: { status: number; body: string };
+    try {
+      res = await transport({
+        baseUrl: this.opts.baseUrl,
+        token: this.opts.token,
+        method,
+        path,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (e) {
+      throw new HermesRpcError(typeof e === "string" && e ? e : e instanceof Error && e.message ? e.message : "Could not reach Hermes.");
+    }
+    let json: unknown;
+    try {
+      json = JSON.parse(res.body);
+    } catch {
+      json = undefined;
+    }
+    if (res.status < 200 || res.status >= 300) {
+      const detail = json && typeof json === "object" ? (json as Record<string, unknown>).detail : undefined;
+      throw new HermesRpcError(typeof detail === "string" && detail ? detail : `Hermes answered HTTP ${res.status}.`, res.status);
+    }
+    if (!json || typeof json !== "object" || Array.isArray(json)) throw new HermesRpcError("Hermes sent an unreadable reply.");
+    return json as JsonObject;
   }
 
   async request(method: string, params: JsonObject = {}, timeoutMs?: number): Promise<JsonObject> {

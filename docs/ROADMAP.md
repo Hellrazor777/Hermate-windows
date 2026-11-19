@@ -13,7 +13,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 - [x] Settings and preferences store
 
 ## Phase 2
-~~Sessions and history~~ (done: list, open, new, delete), file browser, ~~terminal (xterm.js)~~ (done: local shell pane), quota dashboards, Kanban, ~~cron automations~~ (done: list, add, pause/resume, delete; no edit or run history yet), notifications.
+~~Sessions and history~~ (done: list, open, new, delete), file browser, ~~terminal (xterm.js)~~ (done: local shell pane), quota dashboards, ~~Kanban~~ (done: boards, tasks, add, comment, move, complete, archive; no dependencies, assign or run history yet), ~~cron automations~~ (done: list, add, pause/resume, delete; no edit or run history yet), notifications.
 
 ## Phase 3
 GitHub PRs and issues, bots, voice, review tools, generative UI (sandboxed HTML), Mermaid.

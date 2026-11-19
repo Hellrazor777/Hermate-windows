@@ -1,4 +1,4 @@
-import { HermesClient, type WebSocketLike } from "../rpc";
+import { HermesClient, type HttpTransport, type WebSocketLike } from "../rpc";
 import { DEFAULT_REMOTE_PORT, type ConnectionProfile } from "./profile";
 
 /** What the manager needs from the outside world; the real ones are the Tauri bridges. */
@@ -9,6 +9,7 @@ export interface ConnectionDeps {
   startSshTunnel(target: { host: string; user: string; port?: number; remotePort: number }): Promise<SshTunnel>;
   /** Test seam passed through to the client. */
   webSocketFactory?: (url: string) => WebSocketLike;
+  httpTransport?: HttpTransport;
 }
 
 export interface SshTunnel {
@@ -34,7 +35,7 @@ export class ConnectionUnavailableError extends Error {
  */
 export async function connectProfile(profile: ConnectionProfile, deps: ConnectionDeps): Promise<HermesClient> {
   const { baseUrl, token, tunnel } = await resolveEndpoint(profile, deps);
-  const client = new HermesClient({ baseUrl, token, webSocketFactory: deps.webSocketFactory });
+  const client = new HermesClient({ baseUrl, token, webSocketFactory: deps.webSocketFactory, httpTransport: deps.httpTransport });
   if (tunnel) {
     // The SSH forward lives exactly as long as the client: closing the client ends the ssh process.
     const closeClient = client.close.bind(client);

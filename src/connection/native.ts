@@ -11,6 +11,7 @@ export const nativeDeps: ConnectionDeps = {
   startLocalBackend: () => invoke<{ port: number; token: string }>("local_backend_start"),
   loadSecret: (id) => credentials.load(id),
   webSocketFactory: tauriWebSocketFactory,
+  httpTransport: (req) => invoke<{ status: number; body: string }>("plugin_http", { ...req, body: req.body ?? null }),
   startSshTunnel: async ({ host, user, port, remotePort }) => {
     const { id, port: localPort } = await invoke<{ id: number; port: number }>("ssh_tunnel_start", {
       host,

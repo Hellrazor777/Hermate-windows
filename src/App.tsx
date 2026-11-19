@@ -2,6 +2,7 @@ import { useState } from "react";
 import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
 import CronPanel from "./cron/CronPanel";
+import KanbanPanel from "./kanban/KanbanPanel";
 import ActivityBridge from "./activity/ActivityBridge";
 import { useActivity } from "./activity/useActivity";
 import RequestsPanel from "./requests/RequestsPanel";
@@ -31,6 +32,7 @@ export default function App() {
       {services && <SessionsPanel list={services.sessions} chat={services.chat} />}
       {services && <ChatView chat={services.chat} />}
       {services && <CronPanel store={services.cron} />}
+      {services && <KanbanPanel store={services.kanban} />}
 
       <TerminalPane />
 
