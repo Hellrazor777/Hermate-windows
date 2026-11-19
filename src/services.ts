@@ -4,6 +4,7 @@ import { CronStore } from "./cron/store";
 import { KanbanStore } from "./kanban/store";
 import { RequestInbox } from "./requests/inbox";
 import type { HermesClient } from "./rpc";
+import { UsageStore } from "./usage/store";
 import { SessionList } from "./sessions/list";
 
 /** Everything that lives for the length of one Hermes connection. */
@@ -11,6 +12,7 @@ export interface Services {
   chat: ChatController;
   inbox: RequestInbox;
   cron: CronStore;
+  usage: UsageStore;
   kanban: KanbanStore;
   sessions: SessionList;
 }
@@ -27,12 +29,13 @@ export function useServices(client: HermesClient | null): Services | null {
       setServices(null);
       return;
     }
-    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), cron: new CronStore(client), kanban: new KanbanStore(client), sessions: new SessionList(client) };
+    const s: Services = { chat: new ChatController(client), inbox: new RequestInbox(client), cron: new CronStore(client), usage: new UsageStore(client), kanban: new KanbanStore(client), sessions: new SessionList(client) };
     setServices(s);
     return () => {
       void s.chat.close();
       s.inbox.dispose();
       s.cron.dispose();
+      s.usage.dispose();
       s.kanban.dispose();
       s.sessions.dispose();
     };
