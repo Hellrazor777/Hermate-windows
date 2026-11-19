@@ -1,5 +1,6 @@
 mod credentials;
 mod local_backend;
+mod pty;
 mod ssh_tunnel;
 mod tray;
 mod widget;
@@ -188,6 +189,35 @@ fn ssh_tunnel_stop(app: tauri::AppHandle, id: u32) {
     app.state::<ssh_tunnel::SshState>().stop(id);
 }
 
+/// Start a local shell ("powershell" or "cmd") in a pseudo-console and stream its output. Returns the id.
+#[tauri::command]
+fn pty_open(
+    app: tauri::AppHandle,
+    shell: String,
+    cols: u16,
+    rows: u16,
+    on_event: tauri::ipc::Channel<pty::PtyEvent>,
+) -> Result<u32, String> {
+    app.state::<pty::PtyState>().open(&shell, cols, rows, move |event| {
+        let _ = on_event.send(event);
+    })
+}
+
+#[tauri::command]
+fn pty_write(app: tauri::AppHandle, id: u32, text: String) -> Result<(), String> {
+    app.state::<pty::PtyState>().write(id, &text)
+}
+
+#[tauri::command]
+fn pty_resize(app: tauri::AppHandle, id: u32, cols: u16, rows: u16) -> Result<(), String> {
+    app.state::<pty::PtyState>().resize(id, cols, rows)
+}
+
+#[tauri::command]
+fn pty_close(app: tauri::AppHandle, id: u32) {
+    app.state::<pty::PtyState>().close(id);
+}
+
 /// Returns the app version; a trivial command that proves the IPC bridge works.
 #[tauri::command]
 fn app_version() -> String {
@@ -199,6 +229,7 @@ pub fn run() {
         .manage(BackendState::default())
         .manage(ws_bridge::WsState::default())
         .manage(ssh_tunnel::SshState::default())
+        .manage(pty::PtyState::default())
         .setup(|app| {
             tray::setup(app.handle())?;
             widget::create(app.handle())?;
@@ -221,6 +252,10 @@ pub fn run() {
             ws_close,
             ssh_tunnel_start,
             ssh_tunnel_stop,
+            pty_open,
+            pty_write,
+            pty_resize,
+            pty_close,
             credential_set,
             credential_get,
             credential_delete,
@@ -235,6 +270,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 let _ = local_backend_stop(app.clone());
                 app.state::<ssh_tunnel::SshState>().stop_all();
+                app.state::<pty::PtyState>().close_all();
             }
         });
 }

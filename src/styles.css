@@ -194,3 +194,11 @@ textarea {
 .widget-dot.needs-you { background: #f59e0b; }
 .widget-dot.finished { background: #22c55e; }
 .widget-dot.offline { background: transparent; border: 2px solid #ef4444; color: #ef4444; }
+
+.terminal-host {
+  height: 320px;
+  margin-top: 0.5rem;
+  padding: 4px;
+  background: #0c0c0c; /* xterm renders its own dark theme; keep the frame to match */
+  border-radius: 4px;
+}
