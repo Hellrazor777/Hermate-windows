@@ -1,5 +1,6 @@
 mod credentials;
 mod local_backend;
+mod plugin_http;
 mod pty;
 mod ssh_tunnel;
 mod tray;
@@ -118,6 +119,19 @@ fn set_widget_visible(app: tauri::AppHandle, visible: bool) -> Result<(), String
 #[tauri::command]
 fn show_main_window(app: tauri::AppHandle) {
     tray::show_main_window(&app);
+}
+
+/// Call Hermes' Kanban REST API from Rust (the webview's Origin would be refused). The token is a
+/// bearer header and is never logged.
+#[tauri::command]
+async fn plugin_http(
+    base_url: String,
+    token: String,
+    method: String,
+    path: String,
+    body: Option<String>,
+) -> Result<plugin_http::PluginResponse, String> {
+    plugin_http::request(&base_url, &token, &method, &path, body).await
 }
 
 /// Open a WebSocket to Hermes from Rust (no Origin header, which Hermes requires) and stream its
@@ -248,6 +262,7 @@ pub fn run() {
             set_widget_visible,
             show_main_window,
             ws_open,
+            plugin_http,
             ws_send,
             ws_close,
             ssh_tunnel_start,

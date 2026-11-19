@@ -109,3 +109,20 @@ fake socket cannot see this; only the running app can.
 - `session.delete {session_id: <stored id>}` returns `{deleted: id}` once the session is closed (4023 while it is active).
 - Hermate shows only `user` and `assistant` text from a resumed history; other roles are dropped. `running: true` /
   `inflight` (a turn still going) is not yet replayed beyond marking the chat busy.
+
+## Kanban: the dashboard plugin REST API (verified live against Hermes 0.23.1)
+Kanban is **not** over the WebSocket RPC (`kanban.run` is the dispatcher's own admission call, not for clients) and `shell.exec`
+truncates stdout to 4000 characters, which a JSON task list exceeds. The `hermes serve` backend does mount the Kanban dashboard
+plugin as REST under `/api/plugins/kanban/...`, on the same host and port as `/api/ws`.
+- **Auth:** `Authorization: Bearer <session token>` (or `X-Hermes-Session-Token`); a `?token=` query is rejected (401). The same Origin
+  gate applies as for the socket, so Hermate makes these calls from Rust (`src-tauri/src/plugin_http.rs`, allow-listed to
+  `/api/plugins/kanban/`), never from the webview.
+- `GET /boards` -> `{boards: [{slug, name, total, counts, archived, ...}], current}`. `GET /board?board=<slug>` ->
+  `{columns: [{name, tasks: [...]}], assignees, ...}`; columns come in Hermes' order (triage, todo, scheduled, ready, running, blocked,
+  review, done). Tasks carry `id, title, body, assignee, status, priority, result, comment_count`.
+- `GET /tasks/<id>?board=` -> `{task, comments: [{id, author, body, created_at}], events, runs, links, ...}`.
+- `POST /tasks?board=` `{title, body?, assignee?}` -> `{task}` (a new task is `ready`). `POST /tasks/<id>/comments?board=` `{body, author}`.
+- `PATCH /tasks/<id>?board=` `{status}` moves a task: `ready`, `blocked`, `scheduled`, `review`, `todo`, `triage`, `archived`, and `done`.
+  `done` **needs `result` or `summary`** (else 400 "completion blocked: ... no result or summary evidence"); `running` is refused (400).
+  A transition Hermes does not allow is 409 `{detail}`. Errors are `{detail: "..."}`, a real HTTP status, unlike `cron.manage`.
+- `DELETE /boards/<slug>?delete=true` removes a board; `POST /boards` `{slug, name}` creates one. Hermate does neither yet.
