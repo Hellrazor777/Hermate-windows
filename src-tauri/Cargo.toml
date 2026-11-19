@@ -18,3 +18,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 keyring = { version = "3", features = ["windows-native"] }
 getrandom = "0.3"
+tokio-tungstenite = { version = "0.30.0", features = ["native-tls"] }
+futures-util = "0.3.34"
+tokio = { version = "1.54.1", features = ["sync", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "net", "macros", "time"] }

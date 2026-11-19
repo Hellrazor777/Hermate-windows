@@ -2,6 +2,7 @@ mod credentials;
 mod local_backend;
 mod tray;
 mod widget;
+mod ws_bridge;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -117,6 +118,38 @@ fn show_main_window(app: tauri::AppHandle) {
     tray::show_main_window(&app);
 }
 
+/// Open a WebSocket to Hermes from Rust (no Origin header, which Hermes requires) and stream its
+/// events to the webview. Returns the socket id. The URL contains the token: never log it.
+#[tauri::command]
+fn ws_open(
+    app: tauri::AppHandle,
+    url: String,
+    on_event: tauri::ipc::Channel<ws_bridge::WsEvent>,
+) -> Result<u32, String> {
+    ws_bridge::validate_url(&url)?;
+    let state = app.state::<ws_bridge::WsState>();
+    let (id, rx) = state.register().ok_or_else(|| "too many open connections".to_string())?;
+    let cleanup = app.clone();
+    tauri::async_runtime::spawn(async move {
+        ws_bridge::run(url, rx, move |event| {
+            let _ = on_event.send(event);
+        })
+        .await;
+        cleanup.state::<ws_bridge::WsState>().remove(id);
+    });
+    Ok(id)
+}
+
+#[tauri::command]
+fn ws_send(app: tauri::AppHandle, id: u32, text: String) -> Result<(), String> {
+    app.state::<ws_bridge::WsState>().send(id, ws_bridge::Outgoing::Text(text))
+}
+
+#[tauri::command]
+fn ws_close(app: tauri::AppHandle, id: u32) {
+    let _ = app.state::<ws_bridge::WsState>().send(id, ws_bridge::Outgoing::Close);
+}
+
 /// Returns the app version; a trivial command that proves the IPC bridge works.
 #[tauri::command]
 fn app_version() -> String {
@@ -126,6 +159,7 @@ fn app_version() -> String {
 pub fn run() {
     tauri::Builder::default()
         .manage(BackendState::default())
+        .manage(ws_bridge::WsState::default())
         .setup(|app| {
             tray::setup(app.handle())?;
             widget::create(app.handle())?;
@@ -143,6 +177,9 @@ pub fn run() {
             set_tray_state,
             set_widget_visible,
             show_main_window,
+            ws_open,
+            ws_send,
+            ws_close,
             credential_set,
             credential_get,
             credential_delete,
