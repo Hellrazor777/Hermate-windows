@@ -63,7 +63,7 @@ Also seen: `notification.show` (for example low-disk warnings).
 ## Not yet verified
 `session.interrupt`, `session.resume`, `profiles.*` mutations, `projects.tree`, `cron.manage`, `voice.*`,
 a real approval/clarify round trip, `open_requests` replay after reconnect, and remote (WSS) and
-SSH-forwarded connections.
+SSH-forwarded connections (the tunnel itself is unit-tested; see docs/ROADMAP.md).
 
 ## Chat stream semantics (issue #4)
 Verified live for plain text turns; the rest is from the Hermes source (`tui_gateway/stream_segments.py`, `tool_progress.py`).
