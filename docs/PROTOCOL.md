@@ -61,7 +61,7 @@ the client's session isolation drops these for session-bound listeners and still
 Also seen: `notification.show` (for example low-disk warnings).
 
 ## Not yet verified
-`session.interrupt`, `session.resume`, `profiles.*` mutations, `projects.tree`, `cron.manage`, `voice.*`,
+`session.interrupt`, `session.resume`, `profiles.*` mutations, `projects.tree`, `voice.*`,
 a real approval/clarify round trip, `open_requests` replay after reconnect, and remote (WSS) and
 SSH-forwarded connections (the tunnel itself is unit-tested; see docs/ROADMAP.md).
 
@@ -86,3 +86,15 @@ requests against Hermes 0.23.1: no Origin gives 101; `http://localhost:1420` (de
 Origin, so it can never connect from a Tauri window. Hermate therefore opens the socket in Rust (`src-tauri/src/ws_bridge.rs`,
 no Origin) and streams frames to the webview over a Tauri channel (`src/rpc/tauriSocket.ts`). Node scripts and unit tests with a
 fake socket cannot see this; only the running app can.
+
+## Cron: `cron.manage` (verified live against Hermes 0.23.1)
+- Params: `{action: "list" | "add" | "remove" | "pause" | "resume", name?, schedule?, prompt?, repeat?, continuity?, deliver?, include_disabled?, profile?}`.
+  An unknown action is RPC error 4016. There is **no edit** action over RPC (the CLI has `hermes cron edit`).
+- `name` doubles as the job lookup for `remove` / `pause` / `resume` (Hermes accepts the id or the name); Hermate sends the `job_id`.
+- `list` hides paused jobs unless `include_disabled: true`. Rows: `{job_id, name, schedule, prompt_preview, repeat, deliver, next_run_at,
+  last_run_at, last_status, last_error, enabled, state ("scheduled" | "paused"), paused_at, ...}`; timestamps are ISO 8601 with an offset.
+  A reply also carries `gateway_running`.
+- **A refused action is a normal reply, not an RPC error:** `{success: false, error: "..."}` (a bad schedule lists the accepted forms;
+  removing a missing job says "not found"). Clients must check `success`.
+- `add` without `deliver` defaults to `deliver: "local"`: output is saved on the Hermes machine and not delivered anywhere.
+  Schedule forms: `30m`, `every 2h`, `in 30m` (one-shot), `every monday 9am`, `weekdays at 9am`, a cron expression, or an ISO timestamp.
