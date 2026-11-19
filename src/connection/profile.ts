@@ -5,7 +5,20 @@
 export type ConnectionProfile =
   | { id: string; name: string; kind: "local" }
   | { id: string; name: string; kind: "remote"; url: string; credentialId: string }
-  | { id: string; name: string; kind: "ssh"; host: string; user: string; port?: number; remotePort?: number };
+  | {
+      id: string;
+      name: string;
+      kind: "ssh";
+      host: string;
+      user: string;
+      port?: number;
+      /** Where Hermes listens on the remote machine; defaults to `DEFAULT_REMOTE_PORT`. */
+      remotePort?: number;
+      /** Where the Hermes token is in Credential Manager. Absent on older profiles: they cannot connect. */
+      credentialId?: string;
+    };
+
+export const DEFAULT_REMOTE_PORT = 9119;
 
 export type ConnectionKind = ConnectionProfile["kind"];
 
@@ -61,6 +74,10 @@ export function normalizeProfile(raw: unknown): ConnectionProfile | null {
       const profile: ConnectionProfile = { id: o.id, name, kind: "ssh", host: o.host, user: o.user };
       if (o.port !== undefined) profile.port = o.port as number;
       if (o.remotePort !== undefined) profile.remotePort = o.remotePort as number;
+      if (o.credentialId !== undefined) {
+        if (typeof o.credentialId !== "string" || !ID.test(o.credentialId)) return null;
+        profile.credentialId = o.credentialId;
+      }
       return profile;
     }
     default:

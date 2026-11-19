@@ -22,6 +22,15 @@ describe("validateRemoteUrl", () => {
   });
 });
 
+describe("normalizeProfile (ssh token)", () => {
+  it("keeps a valid credentialId and rejects a malformed one", () => {
+    const base = { id: "s", name: "B", kind: "ssh", host: "box.lan", user: "chris" };
+    expect(normalizeProfile({ ...base, credentialId: "cred-s" })).toMatchObject({ credentialId: "cred-s" });
+    expect(normalizeProfile({ ...base, credentialId: "bad id!" })).toBeNull();
+    expect(normalizeProfile({ ...base, credentialId: 5 })).toBeNull();
+  });
+});
+
 describe("normalizeProfile", () => {
   it("accepts each kind and drops unknown fields", () => {
     expect(normalizeProfile({ id: "local", name: "Me", kind: "local", extra: 1 })).toEqual({ id: "local", name: "Me", kind: "local" });
@@ -88,6 +97,7 @@ function deps(over: Partial<ConnectionDeps> = {}, urls: string[] = []): Connecti
   return {
     startLocalBackend: async () => ({ port: 4242, token: "local-token" }),
     loadSecret: async () => "remote-token",
+    startSshTunnel: async () => ({ port: 5555, stop: async () => undefined }),
     webSocketFactory: autoSocket(urls),
     ...over,
   };
@@ -120,10 +130,61 @@ describe("connectProfile", () => {
     ).rejects.toMatchObject({ name: "ConnectionUnavailableError", reason: "missing-token" });
   });
 
-  it("reports SSH as unavailable instead of guessing", async () => {
-    const err = await connectProfile({ id: "s", name: "B", kind: "ssh", host: "h", user: "u" }, deps()).catch((e) => e);
-    expect(err).toBeInstanceOf(ConnectionUnavailableError);
-    expect(err.reason).toBe("ssh-unsupported");
+  const ssh = { id: "s", name: "B", kind: "ssh", host: "box.lan", user: "chris", credentialId: "cred-s" } as const;
+
+  it("connects over an SSH forward on the loopback port, with the stored token", async () => {
+    const urls: string[] = [];
+    const startSshTunnel = vi.fn(async () => ({ port: 5555, stop: async () => undefined }));
+    const client = await connectProfile({ ...ssh, port: 2222, remotePort: 9200 }, deps({ startSshTunnel }, urls));
+    expect(startSshTunnel).toHaveBeenCalledWith({ host: "box.lan", user: "chris", port: 2222, remotePort: 9200 });
+    expect(urls).toEqual(["ws://127.0.0.1:5555/api/ws?token=remote-token"]);
+    client.close();
+  });
+
+  it("uses Hermes' default port when the profile names none", async () => {
+    const startSshTunnel = vi.fn(async () => ({ port: 5555, stop: async () => undefined }));
+    (await connectProfile(ssh, deps({ startSshTunnel }))).close();
+    expect(startSshTunnel).toHaveBeenCalledWith(expect.objectContaining({ remotePort: 9119 }));
+  });
+
+  it("ends the SSH forward when the client closes", async () => {
+    const stop = vi.fn(async () => undefined);
+    const client = await connectProfile(ssh, deps({ startSshTunnel: async () => ({ port: 5555, stop }) }));
+    expect(stop).not.toHaveBeenCalled();
+    client.close();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends the SSH forward when the Hermes connection fails", async () => {
+    const stop = vi.fn(async () => undefined);
+    const failing = () => {
+      const s: WebSocketLike = { onopen: null, onmessage: null, onclose: null, onerror: null, send() {}, close() {} };
+      queueMicrotask(() => s.onclose?.({}));
+      return s;
+    };
+    await expect(
+      connectProfile(ssh, deps({ startSshTunnel: async () => ({ port: 5555, stop }), webSocketFactory: failing })),
+    ).rejects.toBeDefined();
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it("fails closed without a stored token, before opening any tunnel", async () => {
+    const startSshTunnel = vi.fn(async () => ({ port: 1, stop: async () => undefined }));
+    for (const profile of [{ ...ssh, credentialId: undefined }, ssh]) {
+      const err = await connectProfile(profile, deps({ loadSecret: async () => null, startSshTunnel })).catch((e) => e);
+      expect(err).toBeInstanceOf(ConnectionUnavailableError);
+      expect(err.reason).toBe("missing-token");
+    }
+    expect(startSshTunnel).not.toHaveBeenCalled();
+  });
+
+  it("shows why SSH failed", async () => {
+    const err = await connectProfile(
+      ssh,
+      deps({ startSshTunnel: async () => { throw "ssh: Permission denied (publickey)."; } }),
+    ).catch((e) => e);
+    expect(err.reason).toBe("ssh-failed");
+    expect(err.message).toContain("Permission denied");
   });
 
   it("surfaces a local start failure without a secret", async () => {

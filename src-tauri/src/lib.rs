@@ -1,6 +1,7 @@
 mod credentials;
 mod local_backend;
 mod pty;
+mod ssh_tunnel;
 mod tray;
 mod widget;
 mod ws_bridge;
@@ -151,6 +152,43 @@ fn ws_close(app: tauri::AppHandle, id: u32) {
     let _ = app.state::<ws_bridge::WsState>().send(id, ws_bridge::Outgoing::Close);
 }
 
+#[derive(serde::Serialize)]
+struct SshTunnelInfo {
+    id: u32,
+    /// The loopback port that reaches Hermes on the remote host.
+    port: u16,
+}
+
+/// Forward a loopback port to Hermes on `user@host` over SSH (system OpenSSH, non-interactive).
+#[tauri::command]
+async fn ssh_tunnel_start(
+    app: tauri::AppHandle,
+    host: String,
+    user: String,
+    port: Option<u16>,
+    remote_port: u16,
+) -> Result<SshTunnelInfo, String> {
+    let spec = ssh_tunnel::TunnelSpec { host, user, port, remote_port };
+    ssh_tunnel::validate(&spec)?;
+    if app.state::<ssh_tunnel::SshState>().count() >= ssh_tunnel::MAX_TUNNELS {
+        return Err("too many open SSH connections".to_string());
+    }
+    // Starting waits for authentication; keep it off the UI thread.
+    let tunnel = tauri::async_runtime::spawn_blocking(move || {
+        ssh_tunnel::start(&spec, "ssh", ssh_tunnel::READY_TIMEOUT)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let port = tunnel.local_port;
+    let id = app.state::<ssh_tunnel::SshState>().insert(tunnel)?;
+    Ok(SshTunnelInfo { id, port })
+}
+
+#[tauri::command]
+fn ssh_tunnel_stop(app: tauri::AppHandle, id: u32) {
+    app.state::<ssh_tunnel::SshState>().stop(id);
+}
+
 /// Start a local shell ("powershell" or "cmd") in a pseudo-console and stream its output. Returns the id.
 #[tauri::command]
 fn pty_open(
@@ -190,6 +228,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(BackendState::default())
         .manage(ws_bridge::WsState::default())
+        .manage(ssh_tunnel::SshState::default())
         .manage(pty::PtyState::default())
         .setup(|app| {
             tray::setup(app.handle())?;
@@ -211,6 +250,8 @@ pub fn run() {
             ws_open,
             ws_send,
             ws_close,
+            ssh_tunnel_start,
+            ssh_tunnel_stop,
             pty_open,
             pty_write,
             pty_resize,
@@ -228,6 +269,7 @@ pub fn run() {
             // Do not leave a backend we spawned running after the app exits.
             if let tauri::RunEvent::Exit = event {
                 let _ = local_backend_stop(app.clone());
+                app.state::<ssh_tunnel::SshState>().stop_all();
                 app.state::<pty::PtyState>().close_all();
             }
         });
