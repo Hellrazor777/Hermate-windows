@@ -127,6 +127,18 @@ plugin as REST under `/api/plugins/kanban/...`, on the same host and port as `/a
   A transition Hermes does not allow is 409 `{detail}`. Errors are `{detail: "..."}`, a real HTTP status, unlike `cron.manage`.
 - `DELETE /boards/<slug>?delete=true` removes a board; `POST /boards` `{slug, name}` creates one. Hermate does neither yet.
 
+## Files: `/api/files` (verified live against Hermes 0.23.1)
+Hermes serves the machine's files over the same REST server (`Authorization: Bearer`, called from Rust like Kanban).
+Hermate uses only the two read routes, and only with GET; upload, delete, mkdir, download and stream are not reachable from the app.
+- `GET /api/files[?path=<absolute path>]` -> `{path, parent, entries: [{name, path, is_directory, size, mtime, mime_type}], root, locked_root, can_change_path}`.
+  With no `path` it starts in the user's home folder. Folders come first, then by name. `parent` is null at a root.
+  A relative path is 400 "Path must be absolute"; `..` is 400; a missing path is 404.
+- `GET /api/files/read?path=` -> `{name, path, size, mime_type, data_url}` (the whole file as a base64 data URL).
+- **Hermes does not confine this to a workspace by default** (`root: null`, `locked_root: null`, `can_change_path: true`): the whole
+  home folder is browsable and readable, and its sensitive-path denylist is name-based, so it did not stop a plain token file.
+  Anyone holding the session token can read what the user can. Hermate therefore previews only when asked, never logs or keeps
+  contents, caps previews (text 256 KB, images 2 MB), refuses binary data, and never renders SVG.
+
 ## Usage and credits (verified live against Hermes 0.23.1)
 Two independent sources; Hermate shows each on its own and a failure of one never hides the other.
 - RPC `usage.bars` (no params) -> `{ok, available, status, plan_name, renews_at, renews_display, subscription_remaining_display,

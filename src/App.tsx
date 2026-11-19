@@ -3,6 +3,7 @@ import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
 import CronPanel from "./cron/CronPanel";
 import UsagePanel from "./usage/UsagePanel";
+import FilesPanel from "./files/FilesPanel";
 import KanbanPanel from "./kanban/KanbanPanel";
 import ActivityBridge from "./activity/ActivityBridge";
 import { useActivity } from "./activity/useActivity";
@@ -34,6 +35,7 @@ export default function App() {
       {services && <ChatView chat={services.chat} />}
       {services && <CronPanel store={services.cron} />}
       {services && <UsagePanel store={services.usage} />}
+      {services && <FilesPanel store={services.files} />}
       {services && <KanbanPanel store={services.kanban} />}
 
       <TerminalPane />
