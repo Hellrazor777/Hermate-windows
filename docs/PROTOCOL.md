@@ -138,3 +138,18 @@ Hermate uses only the two read routes, and only with GET; upload, delete, mkdir,
   home folder is browsable and readable, and its sensitive-path denylist is name-based, so it did not stop a plain token file.
   Anyone holding the session token can read what the user can. Hermate therefore previews only when asked, never logs or keeps
   contents, caps previews (text 256 KB, images 2 MB), refuses binary data, and never renders SVG.
+
+## Usage and credits (verified live against Hermes 0.23.1)
+Two independent sources; Hermate shows each on its own and a failure of one never hides the other.
+- RPC `usage.bars` (no params) -> `{ok, available, status, plan_name, renews_at, renews_display, subscription_remaining_display,
+  topup_remaining_display, total_spendable_display, has_topup, plan_bar, topup_bar}`; a bar is `{kind, remaining_display, total_display,
+  spent_display, pct_used, fill_fraction}` or null. `available: false` means this Hermes has no credit view (for example another
+  provider): shown as "does not report a credit balance", never inferred. Amounts are Hermes' display strings; the app does no money math.
+- REST `GET /api/analytics/models?days=7|30|90` (bearer token, from Rust like Kanban; `days` outside 1-365 is 422) ->
+  `{models: [{model, provider, input_tokens, output_tokens, cache_read_tokens, reasoning_tokens, estimated_cost, actual_cost, sessions,
+  api_calls, tool_calls, last_used_at, ...}], totals: {total_input, total_output, total_cache_read, total_estimated_cost,
+  total_actual_cost, total_sessions, total_api_calls, distinct_models}, period_days}`. A model's calls with no recorded provider
+  come as a second row with `provider: ""`; Hermate folds that into the single provider row of the same model for display.
+  `estimated_cost` is Hermes' estimate; `actual_cost` is what a provider billed and is 0 when it does not report one.
+- Not used: `billing.state` (carries the account email, organisation and payment method) and `/api/analytics/usage` (a per-day series,
+  empty for quiet periods; a candidate for a chart later).

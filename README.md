@@ -15,6 +15,7 @@ A frontend only. Hermes keeps sessions, agents and history. This app connects to
 - a local terminal pane (PowerShell or cmd, in the app)
 - sessions and history, and scheduled (cron) jobs
 - a read-only file browser for the Hermes machine (text and small images)
+- usage: credit balance and tokens/cost per model
 - Kanban: view a board, add tasks, comment, and move a task (ready, block, complete, archive)
 - later: files, quota, GitHub tools
 - the 3D Office Preview: a low-poly office where each bot is a character moving between desks, meeting rooms and the garden based on task status (Three.js)

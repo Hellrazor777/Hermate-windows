@@ -18,7 +18,7 @@ pub struct PluginResponse {
     pub body: String,
 }
 
-/// Which Hermes HTTP calls Hermate makes: the Kanban plugin API, and read-only file listing and reading.
+/// Which Hermes HTTP calls Hermate makes: the Kanban plugin API, read-only file listing and reading, and model usage analytics.
 /// Upload, delete and mkdir on `/api/files` are deliberately not reachable.
 fn allowed(method: &str, path: &str) -> bool {
     let route = path.split_once('?').map_or(path, |(p, _)| p);
@@ -28,7 +28,7 @@ fn allowed(method: &str, path: &str) -> bool {
     if route.starts_with(KANBAN_PREFIX) {
         return true;
     }
-    method == "GET" && (route == "/api/files" || route == "/api/files/read")
+    method == "GET" && matches!(route, "/api/files" | "/api/files/read" | "/api/analytics/models")
 }
 
 /// Build the request URL, or say why the call is not allowed. This is a Hermes client for a few routes, not a general proxy.
@@ -119,6 +119,9 @@ mod tests {
         let u = build_url("http://h:1", "GET", "/api/files?path=C%3A%5CUsers%5Ca..b").unwrap();
         assert_eq!(u.as_str(), "http://h:1/api/files?path=C%3A%5CUsers%5Ca..b");
         assert!(build_url("http://h:1", "GET", "/api/files/read?path=x").is_ok());
+        assert!(build_url("http://h:1", "GET", "/api/analytics/models?days=30").is_ok());
+        assert!(build_url("http://h:1", "POST", "/api/analytics/models").is_err());
+        assert!(build_url("http://h:1", "GET", "/api/analytics/usage/x").is_err());
         for (m, p) in [
             ("DELETE", "/api/files"),
             ("POST", "/api/files"),
