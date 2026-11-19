@@ -89,6 +89,11 @@ describe("reduce: segments and tools", () => {
     expect(s.items[s.items.length - 1]).toMatchObject({ kind: "tool", id: "late", status: "done" });
   });
 
+  it("uses `context` (the args preview Hermes sends on tool.start) as the row preview", () => {
+    const s = run([ev("tool.start", { tool_id: "tc9", name: "terminal", context: "chmod -R 777 /x", args: { command: "chmod -R 777 /x" } })]);
+    expect(s.items[0]).toMatchObject({ kind: "tool", name: "terminal", preview: "chmod -R 777 /x" });
+  });
+
   it("does not duplicate a tool row on a repeated tool.start", () => {
     const start = ev("tool.start", { tool_id: "tc1", name: "x" });
     expect(run([start, start]).items).toHaveLength(1);

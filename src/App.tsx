@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
+import RequestsPanel from "./requests/RequestsPanel";
 import type { HermesClient } from "./rpc";
 import { THEME_PREFERENCES, settingsStore, useSettings, type ThemePreference } from "./settings";
 
@@ -16,6 +17,7 @@ export default function App() {
         Unofficial Windows companion for Hermes Agent. {client ? "Connected." : "Not connected."}
       </p>
 
+      {client && <RequestsPanel client={client} />}
       <ConnectionScreen onConnected={setClient} />
       {client && <ChatView client={client} />}
 
