@@ -8,7 +8,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 - [ ] Connection setup: local and remote done; SSH-forwarded pending (not yet verified against Hermes)
 - [x] Streaming chat with markdown (tool rows show name, preview and summary; links are not opened yet)
 - [x] Approval / clarify requests (UI built from the Hermes source; a live approval prompt could not be provoked on the dev machine)
-- [ ] Tray icon + edge widget with activity states
+- [x] Tray icon + edge widget with activity states
 - [x] Credential storage via Windows Credential Manager (write path unverified on the dev machine: error 8; CI enforces it)
 - [x] Settings and preferences store
 

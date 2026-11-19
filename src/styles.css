@@ -136,3 +136,61 @@ textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.widget-body {
+  overflow: hidden;
+}
+
+.widget {
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100vh;
+  padding: 10px 12px;
+}
+
+.widget p {
+  font-size: 0.9em;
+  margin: 0;
+  overflow: hidden;
+}
+
+.widget-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.widget-head button {
+  margin-left: auto;
+}
+
+.widget input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--text);
+  padding: 6px 8px;
+  width: 100%;
+}
+
+.widget-dot {
+  align-items: center;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: bold;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.widget-dot.idle { background: #8a8a99; }
+.widget-dot.working { background: #3b82f6; }
+.widget-dot.needs-you { background: #f59e0b; }
+.widget-dot.finished { background: #22c55e; }
+.widget-dot.offline { background: transparent; border: 2px solid #ef4444; color: #ef4444; }

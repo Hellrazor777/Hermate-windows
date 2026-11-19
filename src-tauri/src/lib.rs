@@ -1,5 +1,7 @@
 mod credentials;
 mod local_backend;
+mod tray;
+mod widget;
 mod ws_bridge;
 
 use std::sync::Mutex;
@@ -97,6 +99,25 @@ fn local_backend_status(app: tauri::AppHandle) -> Result<Option<u16>, String> {
     })
 }
 
+/// Show the activity state ("idle", "working", "needs-you", "finished", "offline") on the tray icon.
+#[tauri::command]
+fn set_tray_state(app: tauri::AppHandle, state: String) -> Result<(), String> {
+    let state = tray::ActivityState::parse(&state).ok_or_else(|| "unknown activity state".to_string())?;
+    tray::set_state(&app, state)
+}
+
+/// Show or hide the edge widget.
+#[tauri::command]
+fn set_widget_visible(app: tauri::AppHandle, visible: bool) -> Result<(), String> {
+    widget::set_visible(&app, visible)
+}
+
+/// Bring the main window to the front (used by the widget's "Open" button).
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle) {
+    tray::show_main_window(&app);
+}
+
 /// Open a WebSocket to Hermes from Rust (no Origin header, which Hermes requires) and stream its
 /// events to the webview. Returns the socket id. The URL contains the token: never log it.
 #[tauri::command]
@@ -139,8 +160,23 @@ pub fn run() {
     tauri::Builder::default()
         .manage(BackendState::default())
         .manage(ws_bridge::WsState::default())
+        .setup(|app| {
+            tray::setup(app.handle())?;
+            widget::create(app.handle())?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the main window quits the app (and with it the backend we spawned); the widget
+            // must not keep a windowless app alive.
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                window.app_handle().exit(0);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             app_version,
+            set_tray_state,
+            set_widget_visible,
+            show_main_window,
             ws_open,
             ws_send,
             ws_close,
