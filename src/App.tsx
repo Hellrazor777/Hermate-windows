@@ -6,6 +6,7 @@ import { useActivity } from "./activity/useActivity";
 import RequestsPanel from "./requests/RequestsPanel";
 import type { HermesClient } from "./rpc";
 import { useServices } from "./services";
+import TerminalPane from "./terminal/TerminalPane";
 import { THEME_PREFERENCES, settingsStore, useSettings, type ThemePreference } from "./settings";
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: "Match system", light: "Light", dark: "Dark" };
@@ -26,6 +27,8 @@ export default function App() {
       {services && <RequestsPanel inbox={services.inbox} />}
       <ConnectionScreen onConnected={setClient} />
       {services && <ChatView chat={services.chat} />}
+
+      <TerminalPane />
 
       <fieldset>
         <legend>Appearance</legend>
