@@ -23,6 +23,7 @@ export default function ChatView({ chat }: { chat: ChatController }) {
     <section className="chat">
       <h2>Chat</h2>
       <div className="transcript" aria-live="polite">
+        {state.truncated && <div className="msg muted">Only the most recent messages of this long session are shown.</div>}
         {state.items.map((item) => {
           if (item.kind === "user") {
             return (
