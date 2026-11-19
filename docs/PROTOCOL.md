@@ -77,3 +77,12 @@ Verified live for plain text turns; the rest is from the Hermes source (`tui_gat
 - `thinking.delta` / `reasoning.delta` are interleaved with text; `todo.updated`, `status.update`, `session.usage` also exist (not rendered yet).
 - `session.interrupt {session_id}` and `session.close {session_id}` (live id) take the live session id. A live session cannot be
   `session.delete`d until it is closed (error 4023), even after its socket drops.
+
+## Origin gate: the webview cannot open the socket (found by running the app)
+Hermes' WebSocket upgrade (`web_server_boundary.ws_host_origin_reason`) requires an `Origin`, when present, to name the bound
+host and port; non-web schemes (`file://`, `app://`, `null`) and a missing Origin are accepted. Verified live with raw upgrade
+requests against Hermes 0.23.1: no Origin gives 101; `http://localhost:1420` (dev webview), `http://tauri.localhost` and
+`https://tauri.localhost` (packaged webview) all give 403; the server's own origin gives 101. A browser `WebSocket` always sends an
+Origin, so it can never connect from a Tauri window. Hermate therefore opens the socket in Rust (`src-tauri/src/ws_bridge.rs`,
+no Origin) and streams frames to the webview over a Tauri channel (`src/rpc/tauriSocket.ts`). Node scripts and unit tests with a
+fake socket cannot see this; only the running app can.
