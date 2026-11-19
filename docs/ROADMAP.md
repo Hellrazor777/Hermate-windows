@@ -6,7 +6,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 - [x] Tauri + TypeScript scaffold, CI on Windows
 - [x] Hermes RPC client (auth, reconnect, typed events), tested against a real install (see `docs/PROTOCOL.md`; approval/clarify round trip still unverified)
 - [ ] Connection setup: local and remote done; SSH-forwarded pending (not yet verified against Hermes)
-- [ ] Streaming chat with markdown
+- [x] Streaming chat with markdown (tool rows show name, preview and summary; links are not opened yet)
 - [ ] Approval / clarify requests
 - [ ] Tray icon + edge widget with activity states
 - [x] Credential storage via Windows Credential Manager (write path unverified on the dev machine: error 8; CI enforces it)

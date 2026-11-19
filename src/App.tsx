@@ -1,16 +1,23 @@
+import { useState } from "react";
+import ChatView from "./chat/ChatView";
 import ConnectionScreen from "./connection/ConnectionScreen";
+import type { HermesClient } from "./rpc";
 import { THEME_PREFERENCES, settingsStore, useSettings, type ThemePreference } from "./settings";
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: "Match system", light: "Light", dark: "Dark" };
 
 export default function App() {
   const [settings, update] = useSettings();
+  const [client, setClient] = useState<HermesClient | null>(null);
   return (
     <main>
       <h1>Hermate</h1>
-      <p className="muted">Unofficial Windows companion for Hermes Agent. Not connected.</p>
+      <p className="muted">
+        Unofficial Windows companion for Hermes Agent. {client ? "Connected." : "Not connected."}
+      </p>
 
-      <ConnectionScreen />
+      <ConnectionScreen onConnected={setClient} />
+      {client && <ChatView client={client} />}
 
       <fieldset>
         <legend>Appearance</legend>

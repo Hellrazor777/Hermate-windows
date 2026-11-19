@@ -55,3 +55,66 @@ button {
   cursor: pointer;
   padding: 6px 12px;
 }
+
+.transcript {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.msg {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.msg.user {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+}
+
+.msg.tool {
+  font-size: 0.9em;
+}
+
+.msg.error {
+  color: #d33;
+}
+
+.markdown pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  padding: 8px;
+}
+
+.markdown code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.markdown table {
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+}
+
+textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--text);
+  font: inherit;
+  margin: 8px 0;
+  width: 100%;
+}

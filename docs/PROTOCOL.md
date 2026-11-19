@@ -57,3 +57,16 @@ Also seen: `notification.show` (for example low-disk warnings).
 `session.interrupt`, `session.resume`, `profiles.*` mutations, `projects.tree`, `cron.manage`, `voice.*`,
 a real approval/clarify round trip, `open_requests` replay after reconnect, and remote (WSS) and
 SSH-forwarded connections.
+
+## Chat stream semantics (issue #4)
+Verified live for plain text turns; the rest is from the Hermes source (`tui_gateway/stream_segments.py`, `tool_progress.py`).
+- `message.start {turn_id}`. Every reply frame of a turn carries that `turn_id`.
+- `message.delta {text, turn_id, segment, offset}`: `offset` is the **UTF-16 code-unit index inside the segment**, i.e. a JS string index.
+  A client appends only when `offset` equals the current segment length, trims an overlapping replay, and ignores a gap.
+- `message.interim {text, already_streamed, turn_id, segment}` seals a segment (commentary beside tool calls).
+- `message.complete {text, usage, status, persisted_turn}`: final text (repairs gaps). `error {message}` ends a turn with an error.
+- Tools (source only): `tool.start {tool_id, name, args, preview?}`, `tool.complete {tool_id, name, args, summary?, duration_s?, result, ...}`,
+  `tool.progress`, `tool.generating {name}`. Hermate keeps name, preview, summary and duration, never `result`.
+- `thinking.delta` / `reasoning.delta` are interleaved with text; `todo.updated`, `status.update`, `session.usage` also exist (not rendered yet).
+- `session.interrupt {session_id}` and `session.close {session_id}` (live id) take the live session id. A live session cannot be
+  `session.delete`d until it is closed (error 4023), even after its socket drops.
