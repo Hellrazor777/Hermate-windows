@@ -28,7 +28,14 @@ A user's own `hermes dashboard` may already be listening on 9119; do not reuse i
 - Answer with a **response frame** carrying the same id, not `approval.respond` / `clarify.respond`. Source.
   - approval: `result: {choice: "once"|"session"|"always"|"deny", all?: bool}`
   - clarify: batch of questions `{qid, question, choices, multi_select}`; answers keyed by `qid`
-    (`null` = skipped). The exact response shape is **not verified live**; `clarify.lock` also exists.
+    (`null` = skipped). Source (`settle_batch`): reply with `result: {answers: {qid: string|null}}`; values are strings
+    (a multi-select answer is joined with ", "); an empty `result: {}` is a cancel. `clarify.lock {request_id, question_id, answer}`
+    is the per-question alternative. **Not exercised live.**
+  - Approval requests carry `command`, `description` and `choices` (for example `["once","session","always","deny"]`, or
+    deny-only); only offer choices that are in the list. Hermes redacts secrets in `command` before sending. **Not exercised
+    live**: on the test machine a saved "always allow" rule auto-approved `rm -rf` and `chmod -R 777`, so no prompt was raised.
+- Observed live on a terminal tool call: `tool.start {tool_id, name, context, args}` (`context` is an ~80-char preview of the
+  args) and `tool.complete {tool_id, name, args, duration_s, result}`; `message.complete` also carries `reasoning`.
 - `request.cancel` event, `payload: {id, method, reason}`, withdraws a request. Source.
 - Unanswered requests are replayed as `open_requests` by `session.resume` / `session.activate` /
   `session.events.since`. Not implemented in the client yet.

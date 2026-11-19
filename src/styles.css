@@ -118,3 +118,21 @@ textarea {
   margin: 8px 0;
   width: 100%;
 }
+
+.requests {
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  margin: 16px 0;
+  padding: 0 16px 8px;
+}
+
+.command {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

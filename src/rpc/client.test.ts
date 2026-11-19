@@ -262,6 +262,16 @@ describe("handshake, heartbeat and answers", () => {
     ]);
   });
 
+  it("joins multi-select clarify answers into strings and declines with an empty result", async () => {
+    const { client, sockets } = await connected();
+    client.answerClarify("srq-4", { q0: ["a", "b"], q1: "free text", q2: null });
+    client.declineClarify("srq-5");
+    expect(sockets[0].sent).toEqual([
+      { jsonrpc: "2.0", id: "srq-4", result: { answers: { q0: "a, b", q1: "free text", q2: null } } },
+      { jsonrpc: "2.0", id: "srq-5", result: {} },
+    ]);
+  });
+
   it("refuses to answer while disconnected", () => {
     const { client } = setup();
     expect(() => client.answerApproval("srq-1", "deny")).toThrow(HermesDisconnectedError);

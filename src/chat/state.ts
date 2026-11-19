@@ -113,7 +113,7 @@ export function reduce(state: ChatState, event: HermesEvent): ChatState {
       const id = str(p.tool_id);
       if (!id) return state;
       if (state.items.some((it) => it.kind === "tool" && it.id === id)) return state;
-      const tool: ChatItem = { kind: "tool", id, name: str(p.name) ?? "tool", status: "running", preview: str(p.preview) };
+      const tool: ChatItem = { kind: "tool", id, name: str(p.name) ?? "tool", status: "running", preview: str(p.context) ?? str(p.preview) };
       return { ...state, thinking: false, items: [...state.items, tool] };
     }
 

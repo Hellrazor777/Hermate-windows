@@ -131,9 +131,20 @@ export class HermesClient {
     this.respondToServerRequest(serverRequestId, all ? { choice, all: true } : { choice });
   }
 
-  /** Answer a `clarify.request` event (use its `payload.request_id`). `null` skips a question. Result shape not yet verified live. */
+  /**
+   * Answer a `clarify.request` event (use its `payload.request_id`) with `answers` keyed by question id.
+   * Hermes wants strings: a multi-select answer is joined with ", " (as Hermes' own adapter does) and
+   * `null` skips a question. Shape read from the Hermes source (`settle_batch`); not exercised live.
+   */
   answerClarify(requestId: string, answers: Record<string, string | string[] | null>): void {
-    this.respondToServerRequest(requestId, { answers });
+    const wire: Record<string, string | null> = {};
+    for (const [qid, value] of Object.entries(answers)) wire[qid] = Array.isArray(value) ? value.join(", ") : value;
+    this.respondToServerRequest(requestId, { answers: wire });
+  }
+
+  /** Dismiss a clarify request without answering: an empty result is treated by Hermes as a cancel. */
+  declineClarify(requestId: string): void {
+    this.respondToServerRequest(requestId, {});
   }
 
   /** Close for good: no reconnect, pending requests fail. */
