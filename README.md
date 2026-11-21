@@ -16,6 +16,7 @@ A frontend only. Hermes keeps sessions, agents and history. This app connects to
 - sessions and history, and scheduled (cron) jobs
 - a read-only file browser for the Hermes machine (text and small images)
 - usage: credit balance and tokens/cost per model
+- chat draws ```mermaid diagrams, and shows ```html blocks as code with a Run preview button. A preview runs in an isolated frame with no network and no access to Hermate.
 - desktop notifications when Hermes needs an answer or finishes a reply while Hermate is not in front (turn off under Behaviour). They never contain the reply, command or question text.
 - Kanban: view a board, add tasks, comment, and move a task (ready, block, complete, archive)
 - later: files, quota, GitHub tools

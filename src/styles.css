@@ -202,3 +202,25 @@ textarea {
   background: #0c0c0c; /* xterm renders its own dark theme; keep the frame to match */
   border-radius: 4px;
 }
+
+.rich-bar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.sandbox-frame {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 320px;
+  width: 100%;
+}
+
+.diagram {
+  background: #fff;
+  border-radius: 6px;
+  max-width: 100%;
+}
