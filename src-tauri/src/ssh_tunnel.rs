@@ -81,6 +81,7 @@ pub fn build_args(spec: &TunnelSpec, local_port: u16) -> Vec<String> {
 
 pub struct Tunnel {
     child: Child,
+    _job: Option<crate::job::Job>,
     pub local_port: u16,
 }
 
@@ -119,6 +120,7 @@ pub fn start(spec: &TunnelSpec, program: &str, timeout: Duration) -> Result<Tunn
             format!("could not start ssh: {e}")
         }
     })?;
+    let job = crate::job::Job::adopt(&child);
     let stderr_text = Arc::new(Mutex::new(String::new()));
     if let Some(mut err) = child.stderr.take() {
         let sink = Arc::clone(&stderr_text);
@@ -148,7 +150,7 @@ pub fn start(spec: &TunnelSpec, program: &str, timeout: Duration) -> Result<Tunn
             return Err(failure_message(&stderr_text, status.code()));
         }
         if TcpStream::connect_timeout(&addr, Duration::from_millis(250)).is_ok() {
-            return Ok(Tunnel { child, local_port });
+            return Ok(Tunnel { child, _job: job, local_port });
         }
         if Instant::now() >= deadline {
             let _ = child.kill();

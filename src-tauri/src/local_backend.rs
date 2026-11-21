@@ -45,6 +45,8 @@ impl std::error::Error for BackendError {}
 
 pub struct LocalBackend {
     child: Child,
+    /// Ends the whole process tree when dropped, or when Hermate dies. None if the OS refused.
+    _job: Option<crate::job::Job>,
     pub port: u16,
     token: String,
 }
@@ -124,6 +126,8 @@ pub fn start(program: &PathBuf, timeout: Duration) -> Result<LocalBackend, Backe
         }
     })?;
 
+    let job = crate::job::Job::adopt(&child);
+
     let (tx, rx) = mpsc::channel::<u16>();
     // Read both pipes for the life of the process: an unread pipe fills and blocks `hermes serve`.
     // Output is discarded (never logged) apart from the ready line.
@@ -146,7 +150,7 @@ pub fn start(program: &PathBuf, timeout: Duration) -> Result<LocalBackend, Backe
     drop(tx);
 
     match rx.recv_timeout(timeout) {
-        Ok(port) => Ok(LocalBackend { child, port, token }),
+        Ok(port) => Ok(LocalBackend { child, _job: job, port, token }),
         Err(mpsc::RecvTimeoutError::Timeout) => {
             let _ = child.kill();
             let _ = child.wait();

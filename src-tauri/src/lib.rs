@@ -1,4 +1,5 @@
 mod credentials;
+mod job;
 mod local_backend;
 mod plugin_http;
 mod pty;
