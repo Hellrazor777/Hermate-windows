@@ -16,7 +16,7 @@ Protocol reference: WebSocket `/api/ws` JSON-RPC (`session.create`, `prompt.subm
 ~~Sessions and history~~ (done: list, open, new, delete), ~~file browser~~ (done: read-only browse and preview; no search, open-in-chat or edit yet), ~~terminal (xterm.js)~~ (done: local shell pane), ~~quota dashboards~~ (done: credit balance and per-model usage for 7/30/90 days; no per-day chart or limits yet), ~~Kanban~~ (done: boards, tasks, add, comment, move, complete, archive; no dependencies, assign or run history yet), ~~cron automations~~ (done: list, add, pause/resume, delete; no edit or run history yet), ~~notifications~~ (done: desktop notices for an approval or question and for a finished reply; no click-to-open, sounds or per-event settings yet).
 
 ## Phase 3
-GitHub PRs and issues, bots, voice, review tools, generative UI (sandboxed HTML), Mermaid.
+GitHub PRs and issues, bots, voice, review tools, ~~generative UI (sandboxed HTML), Mermaid~~ (done: chat renders ```mermaid diagrams and opt-in ```html pages in an isolated frame).
 
 ## Office Preview (3D scene), in scope
 A 3D office driven by task status: each bot is a character. Running work sits at computers, review goes to Mission Control, planning uses the Kanban room, idle bots take coffee breaks and wander the garden. Positions persist locally and restore on relaunch.
