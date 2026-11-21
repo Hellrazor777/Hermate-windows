@@ -242,6 +242,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(BackendState::default())
         .manage(ws_bridge::WsState::default())
+        .plugin(tauri_plugin_notification::init())
         .manage(ssh_tunnel::SshState::default())
         .manage(pty::PtyState::default())
         .setup(|app| {

@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default window permissions (the widget only needs events, which core:default grants)",
   "windows": ["main", "widget"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "notification:default"]
 }
